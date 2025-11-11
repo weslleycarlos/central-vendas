@@ -1,0 +1,74 @@
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  name        String
+  description String?
+  sku         String      @unique
+  stock       Stock?
+  prices      Price[]
+  orders      OrderItem[]
+}
+
+model Stock {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  quantity  Int
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String   @unique
+}
+
+model Price {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  price     Float
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  channelId String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  channel    Channel     @relation(fields: [channelId], references: [id])
+  channelId  String
+  items      OrderItem[]
+  totalPrice Float
+  status     String // e.g., PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELED
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  price     Float
+}
+
+model Channel {
+  id     String  @id @default(cuid())
+  name   String  @unique // e.g., WhatsApp, Mercado Livre, OLX, Custom E-commerce
+  orders Order[]
+  prices Price[]
+}
