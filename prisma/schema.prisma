@@ -1,15 +1,160 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+// Enums are not supported in SQLite, using String for now.
+// In Postgres, these should be native Enums.
+
+// Models
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique // Para subdomínios ou URLs amigáveis
+  document    String?  // CNPJ/CPF
+  email       String?
+  phone       String?
+  plan        String   @default("FREE") // Enum: FREE, STARTER, PRO, ENTERPRISE
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  products     Product[]
+  customers    Customer[]
+  orders       Order[]
+  integrations Integration[]
+  inventory    Inventory[]
+
+  @@map("tenants")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String   // Hashed
+  role      String   @default("SELLER") // Enum: SUPER_ADMIN, ADMIN, MANAGER, SELLER
+  tenantId  String?  // Opcional apenas para SUPER_ADMIN
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales     Order[] // Vendas realizadas por este usuário
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  sku         String?
+  price       Decimal
+  costPrice   Decimal? // Preço de custo
+  imageUrl    String?
+  categoryId  String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inventory   Inventory?
+  orderItems  OrderItem[]
+
+  @@unique([tenantId, sku]) // SKU único por tenant
+  @@map("products")
+}
+
+model Inventory {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  productId String   @unique
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(0)
+  minStock  Int      @default(0)
+  location  String?  // Localização no estoque
+  updatedAt DateTime @updatedAt
+
+  @@map("inventory")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  email     String?
+  phone     String?
+  document  String?  // CPF/CNPJ
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id            String        @id @default(uuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  sellerId      String?
+  seller        User?         @relation(fields: [sellerId], references: [id])
+  status        String        @default("PENDING") // Enum: PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, RETURNED
+  paymentStatus String        @default("PENDING") // Enum: PENDING, PAID, FAILED, REFUNDED
+  total         Decimal
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Decimal // Preço no momento da venda
+  subtotal  Decimal
+
+  @@map("order_items")
+}
+
+model Integration {
+  id          String          @id @default(uuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  type        String          // Enum: WHATSAPP, MERCADO_LIVRE, OLX, SHOPEE
+  apiKey      String?
+  apiSecret   String?
+  accessToken String?
+  isActive    Boolean         @default(true)
+  config      String?         // JSON string para configurações extras
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([tenantId, type])
+  @@map("integrations")
 }

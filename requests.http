@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:3000/api
+
+### 1. Login (Obter Cookie de Sessão)
+# Nota: O NextAuth usa cookies. Em um cliente REST como este, você precisa capturar o cookie 'authjs.session-token' 
+# da resposta e usá-lo nas próximas requisições.
+# Para facilitar, recomendo testar via Browser ou Postman Interceptor.
+# Mas aqui está a estrutura da chamada.
+
+POST http://localhost:3000/api/auth/callback/credentials
+Content-Type: application/json
+
+{
+  "email": "admin@centralvendas.com",
+  "password": "password123",
+  "redirect": false,
+  "csrfToken": "" 
+}
+
+### 2. Listar Produtos (Requer Autenticação)
+GET {{baseUrl}}/products
+Content-Type: application/json
+
+### 3. Criar Produto (Requer Autenticação)
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "name": "Novo Produto Teste",
+  "price": 150.00,
+  "sku": "TEST-001",
+  "description": "Descrição do produto teste"
+}
+
+### 4. Listar Estoque
+GET {{baseUrl}}/inventory
+Content-Type: application/json
+
+### 5. Criar Pedido
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "ID_DO_PRODUTO_AQUI", 
+      "quantity": 1
+    }
+  ]
+}
