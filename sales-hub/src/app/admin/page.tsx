@@ -42,7 +42,7 @@ export default async function AdminDashboardPage() {
             _count: { id: true }
         }),
         // Health: Errors in last 24h
-        prisma.integrationLog.count({
+        prisma.activityLog.count({
             where: {
                 status: 'ERROR',
                 createdAt: { gte: oneDayAgo }

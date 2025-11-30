@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sales Hub - SaaS Multi-tenant
 
-## Getting Started
+Plataforma SaaS completa para gestão de vendas, estoque e integrações (Shopee, Mercado Livre, etc.), construída com Next.js 15 e arquitetura Multi-tenant.
 
-First, run the development server:
+## 🚀 Tecnologias
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Framework:** Next.js 15 (App Router)
+- **Linguagem:** TypeScript
+- **Banco de Dados:** SQLite (Dev) / PostgreSQL (Prod) com Prisma ORM
+- **Estilização:** Tailwind CSS
+- **Autenticação:** NextAuth.js (Auth.js) v5
+- **Pagamentos:** Stripe (Checkout, Webhooks, Portal)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Funcionalidades
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 🏢 Painel Super Admin
+- **Gestão de Lojas (Tenants):** Criar, suspender e acessar lojas (Impersonate).
+- **Gestão de Planos:** Definir limites de produtos, pedidos e usuários.
+- **Faturamento:** Dashboard de MRR, assinaturas ativas e histórico de faturas.
+- **Equipe:** Gestão de usuários internos com controle de acesso (RBAC).
+- **Auditoria:** Logs detalhados de atividades e erros do sistema.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🏪 Painel do Lojista (Tenant)
+- **Dashboard:** Visão geral de vendas e estoque.
+- **Produtos:** Cadastro completo com controle de estoque.
+- **Pedidos:** Gestão de pedidos e status.
+- **Integrações:** Sincronização com Shopee (e outros marketplaces).
+- **Configurações:** Personalização da loja e gestão da assinatura.
 
-## Learn More
+## 🛠️ Configuração Local
 
-To learn more about Next.js, take a look at the following resources:
+1.  **Clone o repositório:**
+    ```bash
+    git clone https://github.com/seu-usuario/sales-hub.git
+    cd sales-hub
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2.  **Instale as dependências:**
+    ```bash
+    npm install
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3.  **Configure as variáveis de ambiente:**
+    Crie um arquivo `.env` na raiz baseado no exemplo abaixo:
+    ```env
+    DATABASE_URL="file:./dev.db"
+    AUTH_SECRET="seu-segredo-aqui"
+    NEXT_PUBLIC_APP_URL="http://localhost:3000"
+    
+    # Stripe
+    STRIPE_SECRET_KEY="sk_test_..."
+    STRIPE_WEBHOOK_SECRET="whsec_..."
+    ```
 
-## Deploy on Vercel
+4.  **Configure o Banco de Dados:**
+    ```bash
+    npx prisma db push
+    npx prisma db seed # (Opcional: Se houver seed configurado)
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+5.  **Inicie o servidor:**
+    ```bash
+    npm run dev
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📦 Estrutura do Projeto
+
+- `/src/app/admin`: Rotas do Super Admin.
+- `/src/app/dashboard`: Rotas do Tenant (Lojista).
+- `/src/lib`: Configurações de serviços (Prisma, Stripe, Auth).
+- `/prisma`: Schema do banco de dados.
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT.

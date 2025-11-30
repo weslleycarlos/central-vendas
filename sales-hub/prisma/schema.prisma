@@ -43,15 +43,38 @@ model User {
   password      String?
   role          String    @default("USER") // SUPER_ADMIN, ADMIN, USER
   
+  active        Boolean   @default(true)
+  
   tenantId      String?
   tenant        Tenant?   @relation(fields: [tenantId], references: [id])
   
   accounts      Account[]
   sessions      Session[]
   orders        Order[] // Orders created by this user (seller)
+  activityLogs  ActivityLog[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft Delete
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entity    String   // USER, TENANT, PLAN, etc.
+  entityId  String?
+  details   String?
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  
+  tenantId  String?
+  metadata  String? // JSON payload
+  ipAddress String?
+  userAgent String?
+  status    String? // SUCCESS, ERROR, WARNING
+  
+  createdAt DateTime @default(now())
 }
 
 model VerificationToken {
@@ -100,6 +123,8 @@ model Tenant {
 
   status          String   @default("ACTIVE") // ACTIVE, SUSPENDED, BLOCKED
   
+  stripeCustomerId String? @unique
+
   planId          String?
   planRel         Plan?    @relation("TenantPlan", fields: [planId], references: [id])
   plan            String?  // Legacy field, keep for now or remove if safe
@@ -110,7 +135,43 @@ model Tenant {
   customers       Customer[]
   integrations    Integration[]
   inventory       Inventory[]
+  subscriptions   Subscription[]
+  invoices        Invoice[]
 
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  stripeSubscriptionId String   @unique
+  status               String   // ACTIVE, PAST_DUE, CANCELED, TRIALING
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean  @default(false)
+  
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id])
+  
+  planId               String
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  stripeInvoiceId String   @unique
+  amount          Decimal
+  status          String   // PAID, OPEN, VOID, UNCOLLECTIBLE
+  pdfUrl          String?
+  paidAt          DateTime?
+  
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  
+  subscriptionId  String?
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
