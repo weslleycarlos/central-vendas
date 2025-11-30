@@ -1,8 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
+  output   = "../sales-hub/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -10,151 +8,328 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums are not supported in SQLite, using String for now.
-// In Postgres, these should be native Enums.
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("USER") // SUPER_ADMIN, ADMIN, USER
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id])
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
 
-// Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
 
 model Tenant {
-  id          String   @id @default(uuid())
-  name        String
-  slug        String   @unique // Para subdomínios ou URLs amigáveis
-  document    String?  // CNPJ/CPF
-  email       String?
-  phone       String?
-  plan        String   @default("FREE") // Enum: FREE, STARTER, PRO, ENTERPRISE
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("FREE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Profile
+  logo         String?
+  address      String?
+  city         String?
+  state        String?
+  zipCode      String?
+  phone        String?
+  email        String?
+  document     String?  // CNPJ or CPF
+  status       String   @default("ACTIVE") // ACTIVE, SUSPENDED, BLOCKED
+  primaryColor String?  @default("#000000")
 
-  users        User[]
-  products     Product[]
-  customers    Customer[]
-  orders       Order[]
-  integrations Integration[]
-  inventory    Inventory[]
+  planId       String?
+  planRel      Plan?    @relation(fields: [planId], references: [id])
+
+  users          User[]
+  products       Product[]
+  customers      Customer[]
+  orders         Order[]
+  stockMovements StockMovement[]
+  categories     Category[]
+  integrations   Integration[]
+  inventory      Inventory[]
+  connections    TenantConnection[]
+  listings       ProductListing[]
 
   @@map("tenants")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  password  String   // Hashed
-  role      String   @default("SELLER") // Enum: SUPER_ADMIN, ADMIN, MANAGER, SELLER
-  tenantId  String?  // Opcional apenas para SUPER_ADMIN
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  sales     Order[] // Vendas realizadas por este usuário
-
-  @@map("users")
-}
-
 model Product {
-  id          String   @id @default(uuid())
+  id          String    @id @default(cuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
   name        String
   description String?
   sku         String?
-  price       Decimal
-  costPrice   Decimal? // Preço de custo
+  price       Decimal   @default(0.00)
+  costPrice   Decimal?
   imageUrl    String?
   categoryId  String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  category    Category? @relation(fields: [categoryId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
-  inventory   Inventory?
-  orderItems  OrderItem[]
+  inventory      Inventory?
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
+  listings       ProductListing[]
 
-  @@unique([tenantId, sku]) // SKU único por tenant
+  @@index([tenantId])
   @@map("products")
 }
 
 model Inventory {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   productId String   @unique
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int      @default(0)
   minStock  Int      @default(0)
-  location  String?  // Localização no estoque
-  updatedAt DateTime @updatedAt
-
-  @@map("inventory")
-}
-
-model Customer {
-  id        String   @id @default(uuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  name      String
-  email     String?
-  phone     String?
-  document  String?  // CPF/CNPJ
-  address   String?
-  city      String?
-  state     String?
-  zipCode   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orders    Order[]
+  @@index([tenantId])
+  @@map("inventory")
+}
 
-  @@map("customers")
+model StockMovement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  quantity    Int
+  type        String   // IN, OUT, ADJUSTMENT, SALE, RETURN
+  reason      String?
+  referenceId String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([productId])
+  @@map("stock_movements")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  name      String
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@map("categories")
 }
 
 model Order {
-  id            String        @id @default(uuid())
-  tenantId      String
-  tenant        Tenant        @relation(fields: [tenantId], references: [id])
-  customerId    String?
-  customer      Customer?     @relation(fields: [customerId], references: [id])
-  sellerId      String?
-  seller        User?         @relation(fields: [sellerId], references: [id])
-  status        String        @default("PENDING") // Enum: PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, RETURNED
-  paymentStatus String        @default("PENDING") // Enum: PENDING, PAID, FAILED, REFUNDED
-  total         Decimal
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id         String      @id @default(cuid())
+  tenantId   String
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  customerId String?
+  customer   Customer?   @relation(fields: [customerId], references: [id])
+  total      Decimal     @default(0.00)
+  status     String      // PENDING, COMPLETED, CANCELED
+  paymentStatus String   @default("PENDING") // PENDING, PAID, REFUNDED
+  fee        Decimal     @default(0.00)
+  notes      String?
+  items      OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
-  items         OrderItem[]
-
+  @@index([tenantId])
   @@map("orders")
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
+  id        String  @id @default(cuid())
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id])
   productId String
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
-  price     Decimal // Preço no momento da venda
+  price     Decimal
   subtotal  Decimal
 
   @@map("order_items")
 }
 
+model Customer {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  email     String?
+  phone     String?
+  document  String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  status    String   @default("ACTIVE")
+  notes     String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("customers")
+}
+
 model Integration {
-  id          String          @id @default(uuid())
+  id          String   @id @default(cuid())
   tenantId    String
-  tenant      Tenant          @relation(fields: [tenantId], references: [id])
-  type        String          // Enum: WHATSAPP, MERCADO_LIVRE, OLX, SHOPEE
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  type        String   // WHATSAPP, MERCADO_LIVRE, OLX, SHOPEE
   apiKey      String?
   apiSecret   String?
   accessToken String?
-  isActive    Boolean         @default(true)
-  config      String?         // JSON string para configurações extras
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  isActive    Boolean  @default(true)
+  config      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([tenantId, type])
   @@map("integrations")
+}
+
+model IntegrationPlatform {
+  id          String   @id @default(cuid())
+  name        String   // "Shopee", "Mercado Livre"
+  slug        String   @unique // "shopee", "mercado-livre"
+  appId       String?
+  appSecret   String?
+  apiUrl      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  connections TenantConnection[]
+
+  @@map("integration_platforms")
+}
+
+model TenantConnection {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  platformId    String
+  platform      IntegrationPlatform @relation(fields: [platformId], references: [id])
+  accessToken   String?
+  refreshToken  String?
+  expiresAt     DateTime?
+  accountId     String?  // External Account ID (e.g. Shopee Shop ID)
+  settings      String?  // JSON: price rules, sync modes
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  listings      ProductListing[]
+  logs          IntegrationLog[]
+
+  @@unique([tenantId, platformId])
+  @@map("tenant_connections")
+}
+
+model ProductListing {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  connectionId  String
+  connection    TenantConnection @relation(fields: [connectionId], references: [id])
+  externalId    String?  // ID on the marketplace
+  status        String   // SYNCED, PENDING, ERROR, UNLINKED
+  lastSync      DateTime?
+  errorMessage  String?
+  url           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([productId, connectionId])
+  @@map("product_listings")
+}
+
+model IntegrationLog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  connectionId  String?
+  connection    TenantConnection? @relation(fields: [connectionId], references: [id])
+  event         String   // "PRODUCT_SYNC", "ORDER_IMPORT"
+  status        String   // SUCCESS, ERROR
+  message       String?
+  payload       String?  // Request data
+  response      String?  // Response data
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@map("integration_logs")
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  slug        String   @unique
+  description String?
+  price       Decimal  @default(0.00)
+  
+  // Limits
+  maxProducts    Int      @default(100)
+  maxOrders      Int      @default(50)
+  maxUsers       Int      @default(1)
+  maxIntegrations Int     @default(1)
+  
+  active      Boolean  @default(true)
+  
+  tenants     Tenant[]
+  
+  @@map("plans")
 }

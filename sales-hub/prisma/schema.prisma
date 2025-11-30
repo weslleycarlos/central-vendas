@@ -1,74 +1,219 @@
-
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("USER") // SUPER_ADMIN, ADMIN, USER
+  
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id])
+  
+  accounts      Account[]
+  sessions      Session[]
+  orders        Order[] // Orders created by this user (seller)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Plan {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String?
+  price           Decimal
+  maxProducts     Int      @default(10)
+  maxOrders       Int      @default(50)
+  maxUsers        Int      @default(1)
+  maxIntegrations Int      @default(0)
+  active          Boolean  @default(true)
+  
+  tenants         Tenant[] @relation("TenantPlan")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Tenant {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  document        String?  // CPF/CNPJ
+  email           String?
+  phone           String?
+  
+  // Branding
+  primaryColor    String?
+  logo            String?
+  
+  // Address
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+
+  status          String   @default("ACTIVE") // ACTIVE, SUSPENDED, BLOCKED
+  
+  planId          String?
+  planRel         Plan?    @relation("TenantPlan", fields: [planId], references: [id])
+  plan            String?  // Legacy field, keep for now or remove if safe
+  
+  users           User[]
+  products        Product[]
+  orders          Order[]
+  customers       Customer[]
+  integrations    Integration[]
+  inventory       Inventory[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model Product {
-  id          String      @id @default(cuid())
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id          String   @id @default(cuid())
   name        String
   description String?
-  sku         String      @unique
-  stock       Stock?
-  prices      Price[]
-  orders      OrderItem[]
+  price       Decimal
+  sku         String?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  
+  inventory   Inventory?
+  orderItems  OrderItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime? // Soft Delete
 }
 
-model Stock {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  quantity  Int
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String   @unique
+model Inventory {
+  id          String   @id @default(cuid())
+  quantity    Int      @default(0)
+  minStock    Int      @default(0)
+  
+  productId   String   @unique
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  updatedAt   DateTime @updatedAt
 }
 
-model Price {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  price     Float
-  channel   Channel  @relation(fields: [channelId], references: [id])
-  channelId String
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  document    String?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  
+  orders      Order[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  channel    Channel     @relation(fields: [channelId], references: [id])
-  channelId  String
-  items      OrderItem[]
-  totalPrice Float
-  status     String // e.g., PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELED
+  id          String   @id @default(cuid())
+  status      String   @default("PENDING") // PENDING, PAID, SHIPPED, DELIVERED, CANCELED
+  total       Decimal
+  notes       String?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  
+  sellerId    String?
+  seller      User?    @relation(fields: [sellerId], references: [id])
+  
+  items       OrderItem[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  order     Order    @relation(fields: [orderId], references: [id])
-  orderId   String
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
-  quantity  Int
-  price     Float
+  id          String   @id @default(cuid())
+  quantity    Int
+  price       Decimal
+  subtotal    Decimal
+  
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
 }
 
-model Channel {
-  id     String  @id @default(cuid())
-  name   String  @unique // e.g., WhatsApp, Mercado Livre, OLX, Custom E-commerce
-  orders Order[]
-  prices Price[]
+model Integration {
+  id          String   @id @default(cuid())
+  provider    String   // SHOPEE, MERCADOLIVRE, ETC
+  name        String?
+  active      Boolean  @default(true)
+  
+  apiKey      String?
+  apiSecret   String?
+  accessToken String?
+  refreshToken String?
+  expiresAt   DateTime?
+  
+  settings    String? // Changed from Json to String for SQLite
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

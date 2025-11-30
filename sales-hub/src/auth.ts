@@ -30,11 +30,23 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                     const user = await getUser(email);
                     if (!user) return null;
 
+                    // Check if tenant is active
+                    if (user.tenantId) {
+                        const tenant = await prisma.tenant.findUnique({
+                            where: { id: user.tenantId }
+                        });
+
+                        if (tenant && tenant.status !== 'ACTIVE') {
+                            console.log('Loja suspensa ou bloqueada');
+                            return null;
+                        }
+                    }
+
                     const passwordsMatch = await compare(password, user.password);
                     if (passwordsMatch) return user;
                 }
 
-                console.log('Invalid credentials');
+                console.log('Credenciais inválidas');
                 return null;
             },
         }),

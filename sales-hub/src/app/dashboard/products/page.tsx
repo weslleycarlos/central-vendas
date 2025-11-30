@@ -1,6 +1,8 @@
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
-import Link from 'next/link';
+import CreateProductModal from './create-product-modal';
+import EditProductModal from './edit-product-modal';
+import DeleteProductButton from './delete-product-button';
 
 export default async function ProductsPage() {
     const session = await auth();
@@ -13,26 +15,33 @@ export default async function ProductsPage() {
     const products = await prisma.product.findMany({
         where: {
             tenantId: tenantId,
+            deletedAt: null, // Only show active products
         },
         include: {
             inventory: true,
+            category: true,
         },
         orderBy: {
             createdAt: 'desc'
         }
     });
 
+    const categories = await prisma.category.findMany({
+        where: { tenantId: tenantId },
+        orderBy: { name: 'asc' }
+    });
+
     return (
         <div className="w-full">
             <div className="flex w-full items-center justify-between">
                 <h1 className="text-2xl font-bold text-foreground">Produtos</h1>
-                <Link
-                    href="/dashboard/products/create"
-                    className="flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                    <span className="hidden md:block">Criar Produto</span>
-                    <span className="md:hidden">+</span>
-                </Link>
+                <div className="flex gap-2">
+                    <button className="flex h-10 items-center rounded-lg bg-background border border-border px-4 text-sm font-medium text-secondary-text transition-colors hover:bg-border/50 hover:text-foreground disabled:opacity-50 cursor-not-allowed" disabled title="Em breve">
+                        <span className="material-symbols-outlined mr-2 text-base">sync</span>
+                        Sincronizar
+                    </button>
+                    <CreateProductModal categories={categories} />
+                </div>
             </div>
             <div className="mt-4 flow-root">
                 <div className="inline-block min-w-full align-middle">
@@ -58,6 +67,10 @@ export default async function ProductsPage() {
                                                 {product.inventory?.quantity || 0} un
                                             </p>
                                         </div>
+                                        <div className="flex gap-2">
+                                            <EditProductModal product={product} categories={categories} />
+                                            <DeleteProductButton id={product.id} />
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -72,13 +85,16 @@ export default async function ProductsPage() {
                                         SKU
                                     </th>
                                     <th scope="col" className="px-3 py-5 font-medium text-secondary-text">
+                                        Categoria
+                                    </th>
+                                    <th scope="col" className="px-3 py-5 font-medium text-secondary-text">
                                         Preço
                                     </th>
                                     <th scope="col" className="px-3 py-5 font-medium text-secondary-text">
                                         Estoque
                                     </th>
                                     <th scope="col" className="relative py-3 pl-6 pr-3">
-                                        <span className="sr-only">Editar</span>
+                                        <span className="sr-only">Ações</span>
                                     </th>
                                 </tr>
                             </thead>
@@ -90,11 +106,17 @@ export default async function ProductsPage() {
                                     >
                                         <td className="whitespace-nowrap py-3 pl-6 pr-3">
                                             <div className="flex items-center gap-3">
+                                                {product.imageUrl && (
+                                                    <img src={product.imageUrl} alt={product.name} className="h-8 w-8 rounded-full object-cover" />
+                                                )}
                                                 <p className="font-medium text-foreground">{product.name}</p>
                                             </div>
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-3 text-secondary-text">
                                             {product.sku}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-3 text-secondary-text">
+                                            {product.category?.name || '-'}
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-3 text-foreground">
                                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(product.price))}
@@ -104,7 +126,8 @@ export default async function ProductsPage() {
                                         </td>
                                         <td className="whitespace-nowrap py-3 pl-6 pr-3">
                                             <div className="flex justify-end gap-3">
-                                                {/* Edit button placeholder */}
+                                                <EditProductModal product={product} categories={categories} />
+                                                <DeleteProductButton id={product.id} />
                                             </div>
                                         </td>
                                     </tr>

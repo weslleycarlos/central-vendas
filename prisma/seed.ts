@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import 'dotenv/config'
 
@@ -59,32 +59,66 @@ async function main() {
     if (demoTenant) {
         const productCount = await prisma.product.count({ where: { tenantId: demoTenant.id } })
         if (productCount === 0) {
-            await prisma.product.create({
+            // Create Product
+            const product = await prisma.product.create({
                 data: {
                     tenantId: demoTenant.id,
-                    name: 'Produto Exemplo 1',
-                    price: 99.90,
+                    name: 'Produto Exemplo',
+                    description: 'Descrição do produto exemplo',
+                    price: new Prisma.Decimal(99.90),
                     sku: 'PROD-001',
                     inventory: {
                         create: {
-                            quantity: 10,
-                            minStock: 2,
-                            tenantId: demoTenant.id
+                            tenantId: demoTenant.id,
+                            quantity: 100,
+                            minStock: 10
+                        }
+                    },
+                    stockMovements: {
+                        create: {
+                            tenantId: demoTenant.id,
+                            quantity: 100,
+                            type: 'ADJUSTMENT',
+                            reason: 'Estoque Inicial'
                         }
                     }
                 }
-            })
-            console.log('Product created')
+            });
+
+            // Create Customer
+            await prisma.customer.create({
+                data: {
+                    tenantId: demoTenant.id,
+                    name: 'Cliente Exemplo',
+                    email: 'cliente@exemplo.com',
+                    phone: '11999999999',
+                    status: 'ACTIVE',
+                    notes: 'Cliente fiel'
+                }
+            });
+
+            console.log('Seed completed successfully');
         }
     }
+
+    // Seed Integration Platforms
+    const platforms = ['Shopee', 'Mercado Livre', 'OLX', 'WhatsApp'];
+    for (const name of platforms) {
+        const slug = name.toLowerCase().replace(' ', '-');
+        await prisma.integrationPlatform.upsert({
+            where: { slug },
+            update: {},
+            create: { name, slug, isActive: true }
+        });
+    }
+    console.log('Integration Platforms seeded');
 }
 
 main()
-    .then(async () => {
-        await prisma.$disconnect()
+    .catch((e) => {
+        console.error(e);
+        process.exit(1);
     })
-    .catch(async (e) => {
-        console.error(e)
-        await prisma.$disconnect()
-        process.exit(1)
-    })
+    .finally(async () => {
+        await prisma.$disconnect();
+    });

@@ -20,6 +20,7 @@ export async function GET(req: Request) {
         const products = await prisma.product.findMany({
             where: {
                 tenantId: session.user.tenantId,
+                deletedAt: null,
             },
             include: {
                 inventory: true,
@@ -41,6 +42,34 @@ export async function POST(req: Request) {
         const json = await req.json();
         const body = productSchema.parse(json);
 
+        // Check Plan Limits
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: session.user.tenantId },
+            include: {
+                planRel: true,
+                _count: {
+                    select: {
+                        products: { where: { deletedAt: null } }
+                    }
+                }
+            }
+        });
+
+        if (!tenant) {
+            return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+        }
+
+        if (tenant.planRel) {
+            const currentProducts = tenant._count.products;
+            const maxProducts = tenant.planRel.maxProducts;
+
+            if (currentProducts >= maxProducts) {
+                return NextResponse.json({
+                    error: `Limite de produtos atingido (${currentProducts}/${maxProducts}). Faça upgrade do plano.`
+                }, { status: 403 });
+            }
+        }
+
         const product = await prisma.product.create({
             data: {
                 tenantId: session.user.tenantId,
@@ -51,7 +80,10 @@ export async function POST(req: Request) {
                 inventory: {
                     create: {
                         quantity: 0,
-                        minStock: 0
+                        minStock: 0,
+                        tenant: {
+                            connect: { id: session.user.tenantId }
+                        }
                     }
                 }
             },

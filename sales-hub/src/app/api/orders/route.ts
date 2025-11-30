@@ -54,6 +54,40 @@ export async function POST(req: Request) {
         const json = await req.json();
         const body = orderSchema.parse(json);
 
+        // Check Plan Limits
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: session.user.tenantId },
+            include: {
+                planRel: true,
+                _count: {
+                    select: {
+                        orders: {
+                            where: {
+                                createdAt: {
+                                    gte: new Date(new Date().setDate(1)) // First day of current month
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!tenant) {
+            return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+        }
+
+        if (tenant.planRel) {
+            const currentOrders = tenant._count.orders;
+            const maxOrders = tenant.planRel.maxOrders;
+
+            if (currentOrders >= maxOrders) {
+                return NextResponse.json({
+                    error: `Limite de pedidos mensais atingido (${currentOrders}/${maxOrders}). Faça upgrade do plano.`
+                }, { status: 403 });
+            }
+        }
+
         // Calculate total and verify stock
         let total = 0;
         const orderItemsData = [];
@@ -64,8 +98,9 @@ export async function POST(req: Request) {
                 include: { inventory: true }
             });
 
-            if (!product || product.tenantId !== session.user.tenantId) {
-                return NextResponse.json({ error: `Product ${item.productId} not found` }, { status: 400 });
+            // Check if product exists, belongs to tenant, and is NOT deleted
+            if (!product || product.tenantId !== session.user.tenantId || (product as any).deletedAt) {
+                return NextResponse.json({ error: `Product ${item.productId} not found or unavailable` }, { status: 400 });
             }
 
             if (product.inventory && product.inventory.quantity < item.quantity) {
