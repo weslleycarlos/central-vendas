@@ -91,6 +91,8 @@ model Tenant {
   inventory      Inventory[]
   connections    TenantConnection[]
   listings       ProductListing[]
+  subscriptions  Subscription[]
+  invoices       Invoice[]
 
   @@map("tenants")
 }
@@ -331,4 +333,32 @@ model Plan {
   tenants Tenant[]
 
   @@map("plans")
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  status    String // active, canceled, past_due
+  planId    String?
+  stripeId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  amount          Decimal
+  status          String // PAID, OPEN, VOID
+  stripeInvoiceId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("invoices")
 }
