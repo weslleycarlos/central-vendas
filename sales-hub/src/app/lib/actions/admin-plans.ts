@@ -61,7 +61,7 @@ export async function updatePlan(formData: FormData) {
     const active = formData.get('active') === 'on';
 
     if (!id || !name || !slug || !price) {
-        return { error: 'Missing required fields' };
+        throw new Error('Missing required fields');
     }
 
     try {
