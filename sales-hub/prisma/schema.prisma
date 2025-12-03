@@ -362,3 +362,19 @@ model Invoice {
   @@index([tenantId])
   @@map("invoices")
 }
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  status    String // SUCCESS, ERROR, WARNING
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("activity_logs")
+}
