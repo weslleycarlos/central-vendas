@@ -81,9 +81,9 @@ export async function updatePlan(formData: FormData) {
         });
 
         revalidatePath('/admin/plans');
-        redirect('/admin/plans');
     } catch (error) {
         console.error('Error updating plan:', error);
-        return { error: 'Failed to update plan' };
+        throw new Error('Failed to update plan');
     }
+    redirect('/admin/plans');
 }
