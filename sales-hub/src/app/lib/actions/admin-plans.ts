@@ -46,7 +46,7 @@ export async function createPlan(formData: FormData) {
 export async function updatePlan(formData: FormData) {
     const session = await auth();
     if (session?.user?.role !== 'SUPER_ADMIN') {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const id = formData.get('id') as string;
