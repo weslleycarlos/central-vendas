@@ -35,7 +35,10 @@ export default async function TenantDetailsPage({ params }: { params: Promise<{ 
         prisma.plan.findMany({
             where: { active: true },
             orderBy: { price: 'asc' }
-        })
+        }).then(plans => plans.map(plan => ({
+            ...plan,
+            price: Number(plan.price)
+        })))
     ]);
 
     if (!tenant) {
