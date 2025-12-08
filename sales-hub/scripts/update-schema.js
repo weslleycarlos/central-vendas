@@ -44,15 +44,22 @@ const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
 try {
     let schema = fs.readFileSync(schemaPath, 'utf8');
 
-    const regex = /datasource\s+db\s+\{[\s\S]*?provider\s*=\s*"(.*?)"[\s\S]*?\}/;
-    const match = schema.match(regex);
+    // Regex to find current provider in datasource block for logging
+    const checkRegex = /datasource\s+db\s+\{[\s\S]*?provider\s*=\s*"(.*?)"[\s\S]*?\}/;
+    const match = schema.match(checkRegex);
 
     if (match && match[1] === provider) {
         console.log('[Config] Provider is already set correctly. Skipping update.');
         process.exit(0);
     }
 
-    const newSchema = schema.replace(/provider\s*=\s*".*?"/, `provider = "${provider}"`);
+    // CRITICAL FIX: Only replace provider INSIDE the datasource block
+    // We capture the start of the block up to the provider key to ensure we are editing the right place
+    const newSchema = schema.replace(
+        /(datasource\s+db\s+\{[\s\S]*?)provider\s*=\s*".*?"/,
+        `$1provider = "${provider}"`
+    );
+
     fs.writeFileSync(schemaPath, newSchema);
     console.log(`[Config] schema.prisma updated to provider="${provider}"`);
 
