@@ -4,23 +4,26 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?       @unique
   emailVerified DateTime?
   image         String?
   password      String?
-  role          String    @default("USER") // SUPER_ADMIN, ADMIN, USER
+  role          String        @default("USER") // SUPER_ADMIN, ADMIN, USER
   tenantId      String?
-  tenant        Tenant?   @relation(fields: [tenantId], references: [id])
+  tenant        Tenant?       @relation(fields: [tenantId], references: [id])
   accounts      Account[]
   sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  active        Boolean       @default(true)
+  activityLogs  ActivityLog[]
 }
 
 model Account {
@@ -78,6 +81,8 @@ model Tenant {
   status       String  @default("ACTIVE") // ACTIVE, SUSPENDED, BLOCKED
   primaryColor String? @default("#000000")
 
+  stripeCustomerId String?
+
   planId  String?
   planRel Plan?   @relation(fields: [planId], references: [id])
 
@@ -131,6 +136,7 @@ model Inventory {
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int      @default(0)
   minStock  Int      @default(0)
+  location  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -179,10 +185,12 @@ model Order {
   paymentStatus String      @default("PENDING") // PENDING, PAID, REFUNDED
   fee           Decimal     @default(0.00)
   notes         String?
+  externalId    String?
   items         OrderItem[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
+  @@unique([tenantId, externalId])
   @@index([tenantId])
   @@map("orders")
 }
@@ -300,6 +308,7 @@ model ProductListing {
 model IntegrationLog {
   id           String            @id @default(cuid())
   tenantId     String
+  platformId   String?
   connectionId String?
   connection   TenantConnection? @relation(fields: [connectionId], references: [id])
   event        String // "PRODUCT_SYNC", "ORDER_IMPORT"
@@ -336,28 +345,38 @@ model Plan {
 }
 
 model Subscription {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  status    String // active, canceled, past_due
-  planId    String?
-  stripeId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  tenant               Tenant    @relation(fields: [tenantId], references: [id])
+  status               String // active, canceled, past_due
+  planId               String?
+  stripeId             String?
+  stripeSubscriptionId String?   @unique
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean?  @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  invoices Invoice[]
 
   @@index([tenantId])
   @@map("subscriptions")
 }
 
 model Invoice {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
   amount          Decimal
   status          String // PAID, OPEN, VOID
   stripeInvoiceId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  pdfUrl          String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([tenantId])
   @@map("invoices")
@@ -367,10 +386,12 @@ model ActivityLog {
   id        String   @id @default(cuid())
   tenantId  String?
   userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
   action    String
   entity    String
   entityId  String?
   details   String?
+  metadata  String? // JSON
   status    String // SUCCESS, ERROR, WARNING
   createdAt DateTime @default(now())
 

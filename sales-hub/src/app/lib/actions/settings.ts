@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 export async function updateTenantSettings(formData: FormData) {
     const session = await auth();
     if (!session?.user?.tenantId) {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const tenantId = session.user.tenantId;
@@ -37,9 +37,8 @@ export async function updateTenantSettings(formData: FormData) {
         });
 
         revalidatePath('/dashboard/settings');
-        return { success: true };
     } catch (error) {
         console.error('Error updating settings:', error);
-        return { error: 'Failed to update settings' };
+        throw new Error('Failed to update settings');
     }
 }

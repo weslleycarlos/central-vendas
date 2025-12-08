@@ -9,14 +9,14 @@ export default function AdminChangePasswordModal({ userId, userName }: { userId:
 
     const handleSubmit = async (formData: FormData) => {
         setIsLoading(true);
-        const result = await adminChangePassword(formData);
-        setIsLoading(false);
-
-        if (result.success) {
+        try {
+            await adminChangePassword(formData);
             setIsOpen(false);
             alert('Senha alterada com sucesso!');
-        } else {
-            alert(result.error);
+        } catch (error: any) {
+            alert(error.message || 'Erro ao alterar senha');
+        } finally {
+            setIsLoading(false);
         }
     };
 

@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
         // Calculate total and verify stock
         let total = 0;
-        const orderItemsData = [];
+        const orderItemsData: any[] = [];
 
         for (const item of body.items) {
             const product = await prisma.product.findUnique({
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
                 data: {
                     tenantId: session.user.tenantId!,
                     customerId: body.customerId,
-                    sellerId: session.user.id,
+                    // sellerId removed as it does not exist in schema
                     status: body.status || "PENDING",
                     total: total,
                     notes: body.notes,
@@ -155,7 +155,7 @@ export async function POST(req: Request) {
         return NextResponse.json(order, { status: 201 });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.errors }, { status: 400 });
+            return NextResponse.json({ error: (error as any).errors }, { status: 400 });
         }
         return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
     }

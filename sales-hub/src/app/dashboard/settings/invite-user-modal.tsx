@@ -9,14 +9,15 @@ export default function InviteUserModal() {
 
     const handleSubmit = async (formData: FormData) => {
         setIsLoading(true);
-        const result = await inviteUser(formData);
-        setIsLoading(false);
-
-        if (result.success) {
+        try {
+            await inviteUser(formData);
             setIsOpen(false);
-            // Ideally show a toast
-        } else {
-            alert(result.error);
+            // Ideally show a toast - alert for now is consistent with previous code
+            alert('Convite enviado com sucesso!');
+        } catch (error: any) {
+            alert(error.message || 'Erro ao enviar convite');
+        } finally {
+            setIsLoading(false);
         }
     };
 

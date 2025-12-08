@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         return NextResponse.json(integration, { status: 200 });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.errors }, { status: 400 });
+            return NextResponse.json({ error: (error as any).errors }, { status: 400 });
         }
         return NextResponse.json({ error: "Failed to save integration" }, { status: 500 });
     }

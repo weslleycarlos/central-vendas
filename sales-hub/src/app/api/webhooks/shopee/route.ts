@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
                     items: {
                         create: orderDetails.item_list.map((item: any) => ({
                             productId: 'unknown', // Need to map SKU to Product ID
-                            productName: item.item_name,
                             quantity: item.model_quantity_purchased,
-                            price: item.model_original_price
+                            price: item.model_original_price,
+                            subtotal: item.model_original_price * item.model_quantity_purchased
                         }))
                     }
                 }
@@ -110,9 +110,9 @@ export async function POST(req: NextRequest) {
                 data: {
                     tenantId: connection.tenantId,
                     platformId: platform.id,
-                    action: 'WEBHOOK_ORDER',
+                    event: 'WEBHOOK_ORDER',
                     status: 'SUCCESS',
-                    details: `Order ${orderSn} processed`
+                    message: `Order ${orderSn} processed`
                 }
             });
         }

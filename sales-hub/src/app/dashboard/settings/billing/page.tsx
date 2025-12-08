@@ -39,8 +39,8 @@ export default async function TenantBillingPage() {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold">Plano Atual</h2>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${currentSubscription
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-700'
                         }`}>
                         {currentSubscription ? 'Ativo' : 'Inativo'}
                     </span>
@@ -66,7 +66,7 @@ export default async function TenantBillingPage() {
                     </form>
                 </div>
 
-                {currentSubscription && (
+                {currentSubscription && currentSubscription.currentPeriodEnd && (
                     <div className="mt-6 pt-6 border-t border-border text-sm text-muted-foreground">
                         Próxima cobrança em: {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString('pt-BR')}
                     </div>
@@ -99,8 +99,8 @@ export default async function TenantBillingPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${invoice.status === 'PAID'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-yellow-100 text-yellow-700'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-yellow-100 text-yellow-700'
                                             }`}>
                                             {invoice.status}
                                         </span>

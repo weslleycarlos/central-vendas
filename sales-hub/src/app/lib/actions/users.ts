@@ -8,7 +8,7 @@ import { hash } from 'bcryptjs';
 export async function inviteUser(formData: FormData) {
     const session = await auth();
     if (!session?.user?.tenantId) {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const tenantId = session.user.tenantId;
@@ -18,7 +18,7 @@ export async function inviteUser(formData: FormData) {
     const password = formData.get('password') as string;
 
     if (!name || !email || !role || !password) {
-        return { error: 'Missing fields' };
+        throw new Error('Missing fields');
     }
 
     try {
@@ -28,7 +28,7 @@ export async function inviteUser(formData: FormData) {
         });
 
         if (existingUser) {
-            return { error: 'User already exists' };
+            throw new Error('User already exists');
         }
 
         // Check Plan Limits
@@ -41,7 +41,7 @@ export async function inviteUser(formData: FormData) {
         });
 
         if (!tenant) {
-            return { error: 'Tenant not found' };
+            throw new Error('Tenant not found');
         }
 
         if (tenant.planRel) {
@@ -49,7 +49,7 @@ export async function inviteUser(formData: FormData) {
             const maxUsers = tenant.planRel.maxUsers;
 
             if (currentUsers >= maxUsers) {
-                return { error: `Limite de usuários atingido (${currentUsers}/${maxUsers}). Faça upgrade do plano.` };
+                throw new Error(`Limite de usuários atingido (${currentUsers}/${maxUsers}). Faça upgrade do plano.`);
             }
         }
 
@@ -65,24 +65,23 @@ export async function inviteUser(formData: FormData) {
         });
 
         revalidatePath('/dashboard/settings');
-        return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error inviting user:', error);
-        return { error: 'Failed to invite user' };
+        throw new Error(error.message || 'Failed to invite user');
     }
 }
 
 export async function adminChangePassword(formData: FormData) {
     const session = await auth();
     if (!session?.user?.tenantId || session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const userId = formData.get('userId') as string;
     const newPassword = formData.get('newPassword') as string;
 
     if (!userId || !newPassword || newPassword.length < 6) {
-        return { error: 'Invalid data' };
+        throw new Error('Invalid data');
     }
 
     try {
@@ -92,7 +91,7 @@ export async function adminChangePassword(formData: FormData) {
         });
 
         if (!user || user.tenantId !== session.user.tenantId) {
-            return { error: 'User not found' };
+            throw new Error('User not found');
         }
 
         await prisma.user.update({
@@ -101,9 +100,8 @@ export async function adminChangePassword(formData: FormData) {
         });
 
         revalidatePath('/dashboard/settings');
-        return { success: true };
     } catch (error) {
         console.error('Error changing user password:', error);
-        return { error: 'Failed to change password' };
+        throw new Error('Failed to change password');
     }
 }

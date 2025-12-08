@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation';
 export async function createCheckoutSession(planId: string) {
     const session = await auth();
     if (!session?.user?.tenantId) {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -17,7 +17,7 @@ export async function createCheckoutSession(planId: string) {
     });
 
     if (!tenant) {
-        return { error: 'Tenant not found' };
+        throw new Error('Tenant not found');
     }
 
     // Map internal plan ID to Stripe Price ID
@@ -36,7 +36,7 @@ export async function createCheckoutSession(planId: string) {
     });
 
     if (!plan) {
-        return { error: 'Plan not found' };
+        throw new Error('Plan not found');
     }
 
     // HARDCODED MAPPING FOR DEMO (You should add stripePriceId to Plan model)
@@ -67,14 +67,14 @@ export async function createCheckoutSession(planId: string) {
         }
     } catch (error) {
         console.error('Error creating checkout session:', error);
-        return { error: 'Failed to create checkout session' };
+        throw new Error('Failed to create checkout session');
     }
 }
 
 export async function createPortalSession() {
     const session = await auth();
     if (!session?.user?.tenantId) {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -82,7 +82,7 @@ export async function createPortalSession() {
     });
 
     if (!tenant?.stripeCustomerId) {
-        return { error: 'No billing account found' };
+        throw new Error('No billing account found');
     }
 
     try {
@@ -96,6 +96,6 @@ export async function createPortalSession() {
         }
     } catch (error) {
         console.error('Error creating portal session:', error);
-        return { error: 'Failed to create portal session' };
+        throw new Error('Failed to create portal session');
     }
 }

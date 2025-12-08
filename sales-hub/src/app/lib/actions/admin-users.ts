@@ -10,7 +10,8 @@ export async function logActivity(
     action: string,
     entity: string,
     entityId?: string,
-    details?: string
+    details?: string,
+    status: string = 'SUCCESS'
 ) {
     try {
         await prisma.activityLog.create({
@@ -19,7 +20,8 @@ export async function logActivity(
                 action,
                 entity,
                 entityId,
-                details
+                details,
+                status
             }
         });
     } catch (error) {

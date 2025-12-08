@@ -3,23 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/update-schema.js && prisma generate && next dev",
+    "build": "node scripts/update-schema.js && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "prisma db push",
+    "db:push": "node scripts/update-schema.js && prisma db push",
     "db:seed": "prisma db seed",
-    "postinstall": "prisma generate"
+    "postinstall": "node scripts/update-schema.js && prisma generate"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^7.1.0",
+    "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
     "next": "^16.0.6",
     "next-auth": "^5.0.0-beta.30",
-    "prisma": "^7.1.0",
+    "prisma": "^5.22.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "stripe": "^20.0.0",
@@ -30,7 +30,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "baseline-browser-mapping": "^2.8.32",
     "eslint": "^9",
     "eslint-config-next": "16.0.6",
     "tailwindcss": "^4.1.17",

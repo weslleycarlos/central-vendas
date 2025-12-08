@@ -71,7 +71,7 @@ export async function POST(req: Request) {
         return NextResponse.json(inventory, { status: 200 });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.errors }, { status: 400 });
+            return NextResponse.json({ error: (error as any).errors }, { status: 400 });
         }
         return NextResponse.json({ error: "Failed to update inventory" }, { status: 500 });
     }

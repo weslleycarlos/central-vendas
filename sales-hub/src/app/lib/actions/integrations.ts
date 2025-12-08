@@ -8,14 +8,14 @@ import { revalidatePath } from 'next/cache';
 export async function publishProducts(formData: FormData) {
     const session = await auth();
     if (!session?.user?.tenantId) {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const platformId = formData.get('platformId') as string;
     const productIds = (formData.get('productIds') as string).split(',');
 
     if (!platformId || productIds.length === 0) {
-        return { error: 'Missing platform or products' };
+        throw new Error('Missing platform or products');
     }
 
     // 1. Get Connection
@@ -30,13 +30,13 @@ export async function publishProducts(formData: FormData) {
     });
 
     if (!connection || !connection.accessToken) {
-        return { error: 'Not connected to this platform' };
+        throw new Error('Not connected to this platform');
     }
 
     // 2. Get Platform Config (Admin)
     const platform = connection.platform;
     if (!platform.appId || !platform.appSecret) {
-        return { error: 'Platform not configured by Admin' };
+        throw new Error('Platform not configured by Admin');
     }
 
     // 3. Initialize Client
@@ -70,6 +70,7 @@ export async function publishProducts(formData: FormData) {
                     errorMessage: null
                 },
                 create: {
+                    tenantId: session.user.tenantId,
                     productId: productId,
                     connectionId: connection.id,
                     status: 'SYNCED',
@@ -97,6 +98,7 @@ export async function publishProducts(formData: FormData) {
                     lastSync: new Date()
                 },
                 create: {
+                    tenantId: session.user.tenantId,
                     productId: productId,
                     connectionId: connection.id,
                     status: 'ERROR',
@@ -110,5 +112,4 @@ export async function publishProducts(formData: FormData) {
     }
 
     revalidatePath(`/dashboard/integrations/${platformId}/products`);
-    return { success: true, results };
 }

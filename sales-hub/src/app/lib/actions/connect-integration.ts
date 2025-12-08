@@ -8,12 +8,12 @@ import { redirect } from 'next/navigation';
 export async function connectIntegration(formData: FormData) {
     const session = await auth();
     if (!session?.user?.tenantId) {
-        return { error: 'Unauthorized' };
+        throw new Error('Unauthorized');
     }
 
     const platformId = formData.get('platformId') as string;
     if (!platformId) {
-        return { error: 'Missing platform ID' };
+        throw new Error('Missing platform ID');
     }
 
     // 1. Get Platform Config
@@ -22,11 +22,11 @@ export async function connectIntegration(formData: FormData) {
     });
 
     if (!platform || !platform.isActive) {
-        return { error: 'Platform not active or found' };
+        throw new Error('Platform not active or found');
     }
 
     if (!platform.appId || !platform.appSecret) {
-        return { error: 'Platform not configured by Admin' };
+        throw new Error('Platform not configured by Admin');
     }
 
     // 2. Initialize Client

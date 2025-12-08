@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
 
     if (event.type === 'checkout.session.completed') {
-        const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+        const subscription = await stripe.subscriptions.retrieve(session.subscription as string) as any;
         const tenantId = session.metadata?.tenantId;
 
         if (!tenantId) {
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     }
 
     if (event.type === 'invoice.payment_succeeded') {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object as any;
         const subscriptionId = invoice.subscription as string;
 
         // Find tenant by stripe subscription id (via Subscription model)
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
             });
 
             // Update subscription period
-            const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+            const stripeSub = await stripe.subscriptions.retrieve(subscriptionId) as any;
             await prisma.subscription.update({
                 where: { id: subscription.id },
                 data: {
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     }
 
     if (event.type === 'customer.subscription.updated') {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object as any;
 
         await prisma.subscription.update({
             where: { stripeSubscriptionId: subscription.id },

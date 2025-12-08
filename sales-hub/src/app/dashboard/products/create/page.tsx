@@ -5,7 +5,7 @@ import { createProduct } from '@/app/lib/actions';
 import Link from 'next/link';
 
 export default function CreateProductPage() {
-    const initialState = { message: null, errors: {} };
+    const initialState = { message: '', errors: {} };
     const [state, dispatch] = useFormState(createProduct, initialState);
 
     return (

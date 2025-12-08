@@ -1,6 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client'
 import { hash } from 'bcryptjs'
-import 'dotenv/config'
+
 
 const prisma = new PrismaClient()
 
@@ -22,16 +22,41 @@ async function main() {
         console.log('Super Admin created')
     }
 
+    // Create Plans
+    const plans = [
+        { name: 'Free', slug: 'free', price: 0, maxProducts: 50 },
+        { name: 'Pro', slug: 'pro', price: 99.90, maxProducts: 1000 },
+        { name: 'Enterprise', slug: 'enterprise', price: 299.90, maxProducts: 10000 }
+    ];
+
+    for (const p of plans) {
+        await prisma.plan.upsert({
+            where: { slug: p.slug },
+            update: {},
+            create: {
+                name: p.name,
+                slug: p.slug,
+                price: new Prisma.Decimal(p.price),
+                maxProducts: p.maxProducts
+            }
+        });
+    }
+    console.log('Plans seeded');
+
     // Create Demo Tenant
     const demoTenantSlug = 'demo-loja'
     let demoTenant = await prisma.tenant.findUnique({ where: { slug: demoTenantSlug } })
 
     if (!demoTenant) {
+        // Find Pro plan
+        const proPlan = await prisma.plan.findUnique({ where: { slug: 'pro' } });
+
         demoTenant = await prisma.tenant.create({
             data: {
                 name: 'Loja Exemplo',
                 slug: demoTenantSlug,
-                plan: 'PRO',
+                plan: 'PRO', // Legacy field
+                planId: proPlan?.id // Relation
             },
         })
         console.log('Demo Tenant created')
